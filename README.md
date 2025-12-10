@@ -16,5 +16,5 @@ SSH File Transfer from PC:
   Get IP address of rpi:
     rpi > Terminal > "ip addr"
   PC > cmd > "scp {path to File} {rpi username}@{rpi IP address}:{path on pi}
-  EX: scp blank.txt castleberrypics@192.168.4.38:/home where blank.txt is in directory opened in PC cmd
+  EX: scp "Goat Spaghetti Meme.png" castleberrypics@192.168.86.21:/home/castleberrypics/Pictures where "Goat Spaghetti Meme.png" is in directory opened in PC cmd prompt
     
