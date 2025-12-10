@@ -1,0 +1,53 @@
+# --- Python virtual environments ---
+venv/
+.env/
+.venv/
+
+# --- Python compiled files ---
+__pycache__/
+*.py[cod]
+*.$py.class
+
+# --- Distribution / packaging ---
+build/
+dist/
+*.egg-info/
+*.egg
+
+# --- Virtual environment metadata ---
+pip-wheel-metadata/
+
+# --- Installer logs ---
+pip-log.txt
+
+# --- Unit test / coverage reports ---
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+pytest_cache/
+
+# --- Jupyter Notebook checkpoints ---
+.ipynb_checkpoints/
+
+# --- Temporary / cache files ---
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- VS Code IDE settings ---
+.vscode/
+.history/
+
+# --- PyCharm settings ---
+.idea/
+
+# --- macOS files (if repo touched on mac) ---
+*.DS_Store
+
+# --- Raspberry Pi specific ---
+*.deb
