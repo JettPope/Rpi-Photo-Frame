@@ -97,6 +97,10 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
+                    return
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
