@@ -11,6 +11,12 @@ Rpi configuration:
   Change display orientation to "right" in Rpi > Preferences > Screen Configuration > Screens > Orientation
   Disable on-screen keyboard:
     Rpi > preferences > rpi configuration > Display
+  Use [Odin Project articles](https://www.theodinproject.com/lessons/foundations-setting-up-git) to configure git and Github
+  Clone Repository from Github
+  Open repository and run:
+    python3 -m venv venv
+    pip install -r requirements.txt
+
 
 SSH File Transfer from PC:
   Get IP address of rpi:
