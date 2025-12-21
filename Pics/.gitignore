@@ -1,8 +1,13 @@
 # Ignore common image types so users can populate this folder locally
+*.JPG
 *.jpg
+*.JPEG
 *.jpeg
+*.PNG
 *.png
+*.BMP
 *.bmp
+*.HEIC
 *.heic
 
 # But keep the placeholder so the directory is tracked
