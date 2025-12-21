@@ -1,0 +1,1 @@
+C:\PC\Documents\Rpi Photo Frame\Pictures

@@ -7,3 +7,6 @@ libopenjp2-7-dev
 libheif-dev
 libde265-dev
 libwebp-dev
+pkg-config
+python3-dev
+

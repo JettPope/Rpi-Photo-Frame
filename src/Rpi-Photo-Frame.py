@@ -1,11 +1,18 @@
 import os
 import random
+import hashlib
+import gc
 import pygame
 import time
 import platform
 from PIL import Image
 import pillow_heif
 pillow_heif.register_heif_opener()
+
+# Thumbnail cache directory (inside project .cache by default)
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+CACHE_DIR = os.path.join(ROOT_DIR, ".cache", "thumbs")
+os.makedirs(CACHE_DIR, exist_ok=True)
 
 
 if platform.system() == "Windows": # for development only
@@ -38,6 +45,34 @@ def scale_to_screen(img, screen_size):
     return pygame.transform.scale(img, new_size)
 
 
+def _thumbnail_path_for(image_path, screen_size):
+    # Use path + mtime + screen size to generate a cache filename
+    try:
+        mtime = int(os.path.getmtime(image_path))
+    except OSError:
+        mtime = 0
+    key = f"{image_path}-{mtime}-{screen_size[0]}x{screen_size[1]}"
+    h = hashlib.sha1(key.encode("utf-8")).hexdigest()
+    # keep original extension as .jpg for cached thumbnails
+    return os.path.join(CACHE_DIR, f"{h}.jpg")
+
+
+def _create_thumbnail(src_path, dst_path, screen_size):
+    # Create a small cached version of the image that fits screen_size.
+    # Use Image.draft where possible to reduce memory when decoding large files.
+    with Image.open(src_path) as im:
+        try:
+            im.draft("RGB", screen_size)
+        except Exception:
+            pass
+        im = im.convert("RGB")
+        im.thumbnail(screen_size, Image.Resampling.LANCZOS)
+        # save with reasonable quality to reduce size
+        im.save(dst_path, format="JPEG", quality=85, optimize=True)
+    # encourage GC after heavy operations
+    gc.collect()
+
+
 def main():
     pygame.init()
     pygame.mouse.set_visible(False)
@@ -68,18 +103,31 @@ def main():
     last_switch_time = time.time()
 
     def display_image(path):
-        # Load with Pillow (handles HEIC)
-        pil_img = Image.open(path).convert("RGB")
+        # Try to use a cached thumbnail (faster, lower memory). If missing,
+        # create one and then load it with pygame to avoid expensive conversions.
+        thumb_path = _thumbnail_path_for(path, (screen_width, screen_height))
 
-        # Scale with Pillow to reduce RAM + speed conversion
-        pil_img.thumbnail((screen_width, screen_height), Image.Resampling.LANCZOS)
+        try:
+            if not os.path.exists(thumb_path):
+                _create_thumbnail(path, thumb_path, (screen_width, screen_height))
 
-        # Convert Pillow image → Pygame Surface
-        mode = pil_img.mode
-        size = pil_img.size
-        data = pil_img.tobytes()
-
-        image = pygame.image.fromstring(data, size, mode)
+            # Load the cached JPEG thumbnail with pygame (fast, lower memory)
+            image = pygame.image.load(thumb_path)
+        except MemoryError:
+            print(f"MemoryError loading {path} — skipping image")
+            return
+        except Exception as e:
+            # Fallback: attempt an in-memory, conservative load; if that fails, skip
+            try:
+                with Image.open(path) as pil_img:
+                    pil_img.draft("RGB", (screen_width, screen_height))
+                    pil_img = pil_img.convert("RGB")
+                    pil_img.thumbnail((screen_width, screen_height), Image.Resampling.LANCZOS)
+                    data = pil_img.tobytes()
+                    image = pygame.image.fromstring(data, pil_img.size, pil_img.mode)
+            except Exception as e2:
+                print(f"Failed to load image {path}: {e} / {e2}")
+                return
 
         # Center on screen
         rect = image.get_rect(center=(screen_width // 2, screen_height // 2))
