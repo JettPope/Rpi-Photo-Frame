@@ -2,6 +2,8 @@ import os
 import random
 import hashlib
 import gc
+import threading
+from collections import OrderedDict
 import pygame
 import time
 import platform
@@ -13,6 +15,14 @@ pillow_heif.register_heif_opener()
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CACHE_DIR = os.path.join(ROOT_DIR, ".cache", "thumbs")
 os.makedirs(CACHE_DIR, exist_ok=True)
+
+# Runtime caching / prefetch settings
+PREFETCH_COUNT = 3        # how many upcoming images to cache in memory
+SURFACE_CACHE_SIZE = 6    # max number of surfaces to keep in memory
+
+# In-memory surface cache (path -> pygame.Surface), LRU
+surface_cache = OrderedDict()
+cache_lock = threading.Lock()
 
 
 if platform.system() == "Windows": # for development only
@@ -30,11 +40,34 @@ SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".bmp", ".heic"]
 
 
 def load_image_paths(directory):
-    files = []
-    for f in os.listdir(directory):
-        if any(f.lower().endswith(ext) for ext in SUPPORTED_EXTENSIONS):
-            files.append(os.path.join(directory, f))
-    return files
+    # Return a sorted list of image file paths found recursively under `directory`.
+    # Creates the directory if it doesn't exist so users cloning the repo see the folder.
+    if not os.path.exists(directory):
+        try:
+            os.makedirs(directory, exist_ok=True)
+            print(f"Created image directory: {directory}")
+        except Exception:
+            print(f"Warning: could not create image directory: {directory}")
+            return []
+
+    paths = []
+    for root, dirs, files in os.walk(directory):
+        for fname in files:
+            if any(fname.lower().endswith(ext) for ext in SUPPORTED_EXTENSIONS):
+                paths.append(os.path.join(root, fname))
+
+    # Sort for deterministic order (folders then files alphabetically)
+    paths.sort()
+
+    # Remove duplicates while preserving order (defensive)
+    seen = set()
+    unique_paths = []
+    for p in paths:
+        if p not in seen:
+            seen.add(p)
+            unique_paths.append(p)
+
+    return unique_paths
 
 
 def scale_to_screen(img, screen_size):
@@ -73,9 +106,50 @@ def _create_thumbnail(src_path, dst_path, screen_size):
     gc.collect()
 
 
+def _load_surface_from_thumbnail(thumb_path):
+    # Load a pygame surface from disk and return it. Caller should handle exceptions.
+    return pygame.image.load(thumb_path).convert()
+
+
+def _ensure_prefetch(images, start_index, screen_size):
+    # Prefetch thumbnails + surfaces for the next PREFETCH_COUNT images starting at start_index.
+    def _worker():
+        n = len(images)
+        if n == 0:
+            return
+        for i in range(start_index, start_index + PREFETCH_COUNT):
+            idx = i % n
+            path = images[idx]
+            thumb = _thumbnail_path_for(path, screen_size)
+            try:
+                if not os.path.exists(thumb):
+                    _create_thumbnail(path, thumb, screen_size)
+
+                with cache_lock:
+                    if path in surface_cache:
+                        # move to end = mark as recently used
+                        surface_cache.move_to_end(path)
+                        continue
+
+                surf = _load_surface_from_thumbnail(thumb)
+
+                with cache_lock:
+                    surface_cache[path] = surf
+                    # trim cache
+                    while len(surface_cache) > SURFACE_CACHE_SIZE:
+                        surface_cache.popitem(last=False)
+            except Exception:
+                # ignore individual failures — they'll be skipped at display time
+                continue
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+
+
 def main():
     pygame.init()
     pygame.mouse.set_visible(False)
+    pygame.font.init()
 
     # Open window / fullscreen
     if FULLSCREEN:
@@ -85,13 +159,19 @@ def main():
 
     screen_width, screen_height = screen.get_size()
 
-    # Load images
+    # small font for status text (pause indicator)
+    try:
+        status_font = pygame.font.SysFont(None, 36)
+    except Exception:
+        status_font = None
+
+    # Load images (recursive)
     images = load_image_paths(IMAGE_DIR)
     if not images:
         print("No images found!")
         return
 
-    # Shuffle order
+    # Shuffle order to intersperse images from different folders
     random.shuffle(images)
 
     # Navigation tracking
@@ -103,43 +183,68 @@ def main():
     last_switch_time = time.time()
 
     def display_image(path):
-        # Try to use a cached thumbnail (faster, lower memory). If missing,
-        # create one and then load it with pygame to avoid expensive conversions.
         thumb_path = _thumbnail_path_for(path, (screen_width, screen_height))
 
-        try:
-            if not os.path.exists(thumb_path):
-                _create_thumbnail(path, thumb_path, (screen_width, screen_height))
+        # Prefer in-memory cached surface
+        with cache_lock:
+            surface = surface_cache.get(path)
 
-            # Load the cached JPEG thumbnail with pygame (fast, lower memory)
-            image = pygame.image.load(thumb_path)
-        except MemoryError:
-            print(f"MemoryError loading {path} — skipping image")
-            return
-        except Exception as e:
-            # Fallback: attempt an in-memory, conservative load; if that fails, skip
+        if surface is not None:
+            image = surface
+        else:
             try:
-                with Image.open(path) as pil_img:
-                    pil_img.draft("RGB", (screen_width, screen_height))
-                    pil_img = pil_img.convert("RGB")
-                    pil_img.thumbnail((screen_width, screen_height), Image.Resampling.LANCZOS)
-                    data = pil_img.tobytes()
-                    image = pygame.image.fromstring(data, pil_img.size, pil_img.mode)
-            except Exception as e2:
-                print(f"Failed to load image {path}: {e} / {e2}")
+                if not os.path.exists(thumb_path):
+                    _create_thumbnail(path, thumb_path, (screen_width, screen_height))
+
+                image = _load_surface_from_thumbnail(thumb_path)
+                # store into cache
+                with cache_lock:
+                    surface_cache[path] = image
+                    surface_cache.move_to_end(path)
+                    while len(surface_cache) > SURFACE_CACHE_SIZE:
+                        surface_cache.popitem(last=False)
+            except MemoryError:
+                print(f"MemoryError loading {path} — skipping image")
                 return
+            except Exception as e:
+                try:
+                    with Image.open(path) as pil_img:
+                        pil_img.draft("RGB", (screen_width, screen_height))
+                        pil_img = pil_img.convert("RGB")
+                        pil_img.thumbnail((screen_width, screen_height), Image.Resampling.LANCZOS)
+                        data = pil_img.tobytes()
+                        image = pygame.image.fromstring(data, pil_img.size, pil_img.mode)
+                except Exception as e2:
+                    print(f"Failed to load image {path}: {e} / {e2}")
+                    return
 
         # Center on screen
         rect = image.get_rect(center=(screen_width // 2, screen_height // 2))
 
         screen.fill((0, 0, 0))
         screen.blit(image, rect)
+
+        # Draw paused indicator if paused
+        if paused and status_font is not None:
+            try:
+                s = status_font.render("PAUSED", True, (255, 255, 255))
+                bg = pygame.Surface((s.get_width() + 20, s.get_height() + 10), pygame.SRCALPHA)
+                bg.fill((0, 0, 0, 160))
+                bx = 10
+                by = 10
+                screen.blit(bg, (bx, by))
+                screen.blit(s, (bx + 10, by + 5))
+            except Exception:
+                pass
+
         pygame.display.flip()
 
 
     # Display first image
     history.append(images[current_index])
     display_image(history[-1])
+    # Prefetch next images
+    _ensure_prefetch(images, current_index + 1, (screen_width, screen_height))
 
     while True:
         for event in pygame.event.get():
@@ -159,7 +264,10 @@ def main():
                         # Move current into future history
                         future.append(history.pop())
                         display_image(history[-1])
-                        paused = True
+
+                        # reset auto-advance timer instead of pausing
+                        last_switch_time = time.time()
+                        _ensure_prefetch(images, current_index + 1, (screen_width, screen_height))
 
                 # MIDDLE TOUCH → PAUSE / UNPAUSE
                 elif x < screen_width * 0.66:
@@ -179,9 +287,11 @@ def main():
                         history.append(next_img)
                         display_image(next_img)
 
-                    paused = True
+                    # reset auto-advance timer instead of pausing
+                    last_switch_time = time.time()
 
-                last_switch_time = time.time()
+                    # Prefetch upcoming images
+                    _ensure_prefetch(images, current_index + 1, (screen_width, screen_height))
 
         # Automatic switching (if not paused)
         if not paused and (time.time() - last_switch_time > DISPLAY_SECONDS):
