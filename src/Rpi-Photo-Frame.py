@@ -272,6 +272,12 @@ def main():
                 # MIDDLE TOUCH → PAUSE / UNPAUSE
                 elif x < screen_width * 0.66:
                     paused = not paused
+                    # Immediately redraw the current image so the PAUSED indicator shows/hides
+                    try:
+                        if history:
+                            display_image(history[-1])
+                    except Exception:
+                        pass
 
                 # RIGHT TOUCH → FORWARD
                 else:

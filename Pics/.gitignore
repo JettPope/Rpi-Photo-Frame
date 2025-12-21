@@ -1,3 +1,9 @@
+# Ignore all subdirectories inside Pics so individual user folders are not tracked
+*/
+*/*
+
+# Allow the placeholder so the directory is not empty in the repo
+!.gitkeep
 # Ignore common image types so users can populate this folder locally
 *.JPG
 *.jpg
