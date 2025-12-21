@@ -51,3 +51,6 @@ Thumbs.db
 
 # --- Raspberry Pi specific ---
 *.deb
+
+# --- Pics are specific to user so shouldn't be part of the repo ---
+./Pics/*

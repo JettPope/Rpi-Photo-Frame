@@ -12,7 +12,7 @@ if platform.system() == "Windows": # for development only
     IMAGE_DIR = r"C:\PC\Documents\Rpi Photo Frame\Pictures"
     FULLSCREEN = False # make window resizable on Windows
 else:
-    IMAGE_DIR = "/home/Castleberry-Photo-Frame-Pics"
+    IMAGE_DIR = "Pics"
     FULLSCREEN = True # run fullscreen on Pi
 
 
