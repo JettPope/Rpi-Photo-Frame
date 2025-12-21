@@ -1,0 +1,4 @@
+Pillow
+pillow-heif
+# pygame is installed via apt on Raspberry Pi for best compatibility; include here for virtualenvs
+pygame

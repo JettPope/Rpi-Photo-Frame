@@ -13,9 +13,16 @@ Rpi configuration:
     Rpi > preferences > rpi configuration > Display
   Use [Odin Project articles](https://www.theodinproject.com/lessons/foundations-setting-up-git) to configure git and Github
   Clone Repository from Github
-  Open repository and run:
+  Run the automated setup on Raspberry Pi (recommended):
+
+    bash scripts/setup.sh
+
+  Or do the steps manually:
+
     python3 -m venv venv
-    pip install -r requirements.txt
+    source venv/bin/activate
+    python -m pip install --upgrade pip
+    python -m pip install -r requirements.txt
 
 
 SSH File Transfer from PC:
