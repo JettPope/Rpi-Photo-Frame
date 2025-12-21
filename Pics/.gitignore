@@ -1,0 +1,9 @@
+# Ignore common image types so users can populate this folder locally
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.heic
+
+# But keep the placeholder so the directory is tracked
+!.gitkeep
