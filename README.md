@@ -13,6 +13,62 @@ Rpi configuration:
     Rpi > preferences > rpi configuration > Display
   Use [Odin Project articles](https://www.theodinproject.com/lessons/foundations-setting-up-git) to configure git and Github
   Clone Repository from Github
+
+
+
+SSH File Transfer from PC:
+  Get IP address of rpi:
+    rpi > Terminal > "ip addr"
+  PC > cmd > "scp {path to File} {rpi username}@{rpi IP address}:{path on pi}
+  EX: scp "Goat Spaghetti Meme.png" castleberrypics@192.168.86.21:/home/castleberrypics/Pictures where "Goat Spaghetti Meme.png" is in directory opened in PC cmd prompt
+    
+
+
+Setup Autostart after cloning repo:
+sudo nano /etc/systemd/system/rpi-photo-frame.service
+Paste entire below into file:
+    [Unit]
+    Description=Raspberry Pi Photo Frame (pygame)
+    After=display-manager.service
+    Wants=display-manager.service
+    
+    [Service]
+    Type=simple
+    User=popepics
+    
+    Environment=DISPLAY=:0
+    Environment=XAUTHORITY=/home/popepics/.Xauthority
+    
+    WorkingDirectory=/home/popepics/Rpi-Photo-Frame
+    
+    # WAIT until X11 is actually ready
+    ExecStartPre=/bin/bash -c 'until [ -e /tmp/.X11-unix/X0 ] && [ -f /home/popepics/.Xauthority ]; do sleep 1; done'
+    
+    ExecStart=/home/popepics/Rpi-Photo-Frame/venv/bin/python src/Rpi-Photo-Frame.py
+    
+    Restart=always
+    RestartSec=5
+    
+    StandardOutput=journal
+    StandardError=journal
+    
+    [Install]
+    WantedBy=graphical.target
+  
+  (outside that file, run:)
+  sudo systemctl daemon-reload
+  sudo systemctl enable rpi-photo-frame.service
+  sudo systemctl restart rpi-photo-frame.service
+  (then, sudo reboot)
+
+
+
+Usage:
+Put pictures to display in the Pics/ directory. They can be inside of nested folders or not; either way all the images will be randomly displayed (so the pics from different folders will be intermingled).
+To change the time each picture is displayed, open src/Rpi-Photo-Frame.py and change DISPLAY_SECONDS to the desired number of seconds for each image to be displayed before the next is automatically displayed.
+
+
+To run once (useful for development)
   Run the automated setup on Raspberry Pi (recommended):
 
     bash scripts/setup.sh
@@ -23,15 +79,4 @@ Rpi configuration:
     source venv/bin/activate
     python -m pip install --upgrade pip
     python -m pip install -r requirements.txt
-
-
-SSH File Transfer from PC:
-  Get IP address of rpi:
-    rpi > Terminal > "ip addr"
-  PC > cmd > "scp {path to File} {rpi username}@{rpi IP address}:{path on pi}
-  EX: scp "Goat Spaghetti Meme.png" castleberrypics@192.168.86.21:/home/castleberrypics/Pictures where "Goat Spaghetti Meme.png" is in directory opened in PC cmd prompt
-    
-
-Usage:
-Put pictures to display in the Pics/ directory. They can be inside of nested folders or not; either way all the images will be randomly displayed (so the pics from different folders will be intermingled).
-To change the time each picture is displayed, open src/Rpi-Photo-Frame.py and change DISPLAY_SECONDS to the desired number of seconds for each image to be displayed before the next is automatically displayed.
+    Note: will probably have to disable the auto-restart of the program in systemmd file.
