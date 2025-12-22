@@ -42,17 +42,17 @@ Paste entire below into file:
     
     [Service]
     Type=simple
-    User=popepics
+    User=ENTER USERNAME HERE
     
     Environment=DISPLAY=:0
-    Environment=XAUTHORITY=/home/popepics/.Xauthority
+    Environment=XAUTHORITY=/home/ENTER USERNAME HERE/.Xauthority
     
-    WorkingDirectory=/home/popepics/Rpi-Photo-Frame
+    WorkingDirectory=/home/ENTER USERNAME HERE/Rpi-Photo-Frame
     
     # WAIT until X11 is actually ready
-    ExecStartPre=/bin/bash -c 'until [ -e /tmp/.X11-unix/X0 ] && [ -f /home/popepics/.Xauthority ]; do sleep 1; done'
+    ExecStartPre=/bin/bash -c 'until [ -e /tmp/.X11-unix/X0 ] && [ -f /home/ENTER USERNAME HERE/.Xauthority ]; do sleep 1; done'
     
-    ExecStart=/home/popepics/Rpi-Photo-Frame/venv/bin/python src/Rpi-Photo-Frame.py
+    ExecStart=/home/ENTER USERNAME HERE/Rpi-Photo-Frame/venv/bin/python src/Rpi-Photo-Frame.py
     
     Restart=always
     RestartSec=5
