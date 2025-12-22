@@ -34,7 +34,7 @@ else:
 
 
 # ---------------------- CONFIGURATION ----------------------
-DISPLAY_SECONDS = 8               # how long to show each image
+DISPLAY_SECONDS = 45               # how long to show each image
 SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".bmp", ".heic"]
 # -----------------------------------------------------------
 
