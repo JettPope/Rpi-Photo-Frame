@@ -106,106 +106,57 @@ The web interface allows you to:
 - **Delete individual images or entire folders**
 - **View full-size images** in a new tab
 
-**Authentication**: The web interface requires login. Default credentials are username: `admin`, password: `admin123`. Change these in the code for security.
+**Authentication**: The web interface requires login. On first run, you'll be prompted to create an admin user. User credentials are stored in `config/users.json` (not in version control). Use the "Manage Users" link in the web interface to add/edit/delete users.
 
-**Remote Access Setup (Detailed)**:
+**Configuration**: User credentials and other settings are stored in the `config/` directory, which is excluded from version control for security.
 
-#### Step 1: Choose a Dynamic DNS Service
-- **DuckDNS** (recommended - free, no registration required)
-- **No-IP** (free tier available)
-- **DynDNS** (paid)
-
-#### Step 2: Get Your Domain Name
-1. Go to [duckdns.org](https://duckdns.org)
-2. Enter your desired subdomain name (e.g., `myframe1`)
-3. Click "add domain" - you'll get `myframe1.duckdns.org`
-4. Copy your token (shown after adding domain)
-
-#### Step 3: Install DDNS Client on Raspberry Pi
+**Remote Access with Ngrok** (No Router Configuration Needed):
+#### **Start the Web Server**
 ```bash
-# Create the DDNS update script
-sudo nano /usr/local/bin/duckdns.sh
-# Copy and paste the following content, then save:
+# Activate virtual environment
+source venv/bin/activate
+
+# Start the photo frame web manager
+python src/web_manager.py
 ```
 
+#### **Start Ngrok Tunnel** (in a separate terminal)
 ```bash
-#!/bin/bash
-# DuckDNS DDNS Update Script
-# Your DuckDNS token and domain
-TOKEN="your-duckdns-token-here"
-DOMAIN="yourdomain"
-
-# Get current IP
-IP=$(curl -s https://api.ipify.org)
-
-# Update DuckDNS
-curl -s "https://www.duckdns.org/update?domains=$DOMAIN&token=$TOKEN&ip=$IP"
-
-echo "$(date): Updated $DOMAIN to $IP" >> /var/log/duckdns.log
-```
-
-```bash
-# Make it executable
-sudo chmod +x /usr/local/bin/duckdns.sh
-```
-
-#### Step 4: Set Up Automatic Updates
-```bash
-# Add to cron to update every 5 minutes
-sudo crontab -e
-# Add this line:
-*/5 * * * * /usr/local/bin/duckdns.sh
-```
-
-#### Step 5: Configure Router Port Forwarding
-1. Access your router's admin panel (usually 192.168.1.1)
-2. Find "Port Forwarding" or "NAT" settings
-3. Forward external port 5000 to your Pi's local IP (e.g., 192.168.1.100:5000)
-4. Save settings
-
-#### Alternative: Reverse Tunneling (No Router Config Needed)
-
-If you can't or don't want to configure port forwarding, use a reverse tunneling service:
-
-**Option A: Ngrok (Recommended - No Router Config)**
-```bash
-# Run the automated setup
-chmod +x setup_ngrok.sh
-./setup_ngrok.sh
-```
-
-Or manually:
-```bash
-# Install ngrok
-wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-arm.tgz
-sudo tar xvzf ngrok-v3-stable-linux-arm.tgz -C /usr/local/bin
-
-# Get your auth token from ngrok.com and configure
-ngrok config add-authtoken YOUR_TOKEN_HERE
-
-# Start tunnel
+# Start the tunnel to port 5000
 ngrok http 5000
 ```
 
-Ngrok provides a secure HTTPS URL like `https://abc123.ngrok.io`
+#### **Find Your Web Address**
+When ngrok starts, it will display output like this:
+```
+ngrok by @inconshreveable
 
-**Option B: Serveo (Free, no account)**
-```bash
-# Create SSH tunnel
-ssh -R 80:localhost:5000 serveo.net
+Session Status                online
+Account                       Your Name (Plan: Free)
+Version                       3.x.x
+Region                        United States (us)
+Latency                       25ms
+Web Interface                 http://127.0.0.1:4040
+Forwarding                    https://abc123.ngrok.io -> http://localhost:5000
+Forwarding                    http://abc123.ngrok.io -> http://localhost:5000
 ```
 
-Serveo provides a temporary URL like `https://abc123.serveo.net`
+**Your photo frame is accessible at the Forwarding address:`https://abc123.ngrok.io`**
 
-**For Production Use:**
-- Set up ngrok as a system service that starts automatically
-- Use ngrok's paid plan ($5/month) for custom domains and persistent URLs
-- Consider security: these services expose your Pi to the internet
+#### **Access Your Photo Frame**
+1. Open the ngrok URL (`https://abc123.ngrok.io`) in any web browser
+2. **First-time setup**: Create your first admin user account
+3. **Login**: Use your admin credentials to access the photo management interface
 
-**Important Notes:**
-- **Free ngrok URLs change** each time you restart (paid plan needed for stable URLs)
-- **Serveo URLs are temporary** and change frequently
-- **Security**: Always use the authentication built into the web manager
-- **Performance**: Tunneling adds some latency compared to direct access
+#### **Important Notes for Ngrok:**
+- **Free plan**: The URL changes each time you restart ngrok
+- **Paid plan** ($5/month): Get a permanent custom domain like `yourframe.ngrok.io`
+- **Security**: The web interface has built-in authentication
+- **Performance**: There's a small delay due to tunneling, but it's minimal
+
+#### **Alternative Remote Access Methods**
+If you prefer not to use ngrok, you can also set up:
+- **Port forwarding + Dynamic DNS** (requires router configuration)
+- **Serveo** (free, temporary URLs): `ssh -R 80:localhost:5000 serveo.net`
 
 Note: The web server runs on port 5000. For production use, consider using a reverse proxy like nginx for security and to run on port 80.

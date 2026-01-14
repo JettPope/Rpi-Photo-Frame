@@ -8,6 +8,7 @@ from PIL import Image
 from io import BytesIO
 import pillow_heif
 import datetime
+import json
 
 pillow_heif.register_heif_opener()
 
@@ -24,14 +25,32 @@ app.config['UPLOAD_FOLDER'] = IMAGE_DIR
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB limit for multiple files
 app.secret_key = 'change-this-secret-key-for-production'  # IMPORTANT: Change this!
 
-# Simple user authentication (in production, use a database)
-USERS = {
-    'admin': generate_password_hash('admin123'),  # Default credentials
-    # Add more users as needed: 'username': generate_password_hash('password')
-}
+# Load user credentials from external file (not in version control)
+USERS_FILE = os.path.join(os.path.dirname(__file__), '..', 'config', 'users.json')
+
+def load_users():
+    """Load users from JSON file"""
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, 'r') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            print(f"Warning: Could not load users from {USERS_FILE}")
+    return {}
+
+def save_users(users):
+    """Save users to JSON file"""
+    os.makedirs(os.path.dirname(USERS_FILE), exist_ok=True)
+    with open(USERS_FILE, 'w') as f:
+        json.dump(users, f, indent=2)
+
+# Load users at startup
+USERS = load_users()
 
 def login_required(f):
     def decorated_function(*args, **kwargs):
+        if not USERS:
+            return redirect(url_for('setup'))
         if 'username' not in session:
             return redirect(url_for('login', next=request.url))
         return f(*args, **kwargs)
@@ -66,8 +85,44 @@ def collect_images(directory, base_path=""):
                 images.append({'path': rel_path, 'date': date_str})
     return images
 
+@app.route('/setup', methods=['GET', 'POST'])
+def setup():
+    if USERS:
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        
+        if not username or not password:
+            flash('Username and password are required')
+            return redirect(url_for('setup'))
+        
+        if password != confirm_password:
+            flash('Passwords do not match')
+            return redirect(url_for('setup'))
+        
+        if len(password) < 6:
+            flash('Password must be at least 6 characters')
+            return redirect(url_for('setup'))
+        
+        # Create the first admin user
+        global USERS
+        USERS[username] = generate_password_hash(password)
+        save_users(USERS)
+        
+        session['username'] = username
+        flash('Admin user created successfully!')
+        return redirect(url_for('index'))
+    
+    return render_template('setup.html')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if not USERS:
+        return redirect(url_for('setup'))
+        
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -82,6 +137,70 @@ def login():
 def logout():
     session.pop('username', None)
     return redirect(url_for('login'))
+
+@app.route('/manage-users')
+@login_required
+def manage_users():
+    return render_template('manage_users.html', users=list(USERS.keys()), current_user=session.get('username'))
+
+@app.route('/add-user', methods=['POST'])
+@login_required
+def add_user():
+    username = request.form.get('username', '').strip()
+    password = request.form.get('password', '')
+    
+    if not username or not password:
+        flash('Username and password are required')
+        return redirect(url_for('manage_users'))
+    
+    if username in USERS:
+        flash('User already exists')
+        return redirect(url_for('manage_users'))
+    
+    USERS[username] = generate_password_hash(password)
+    save_users(USERS)
+    flash(f'User {username} added successfully')
+    return redirect(url_for('manage_users'))
+
+@app.route('/delete-user/<username>')
+@login_required
+def delete_user(username):
+    current_user = session.get('username')
+    if username == current_user:
+        flash('Cannot delete your own account')
+        return redirect(url_for('manage_users'))
+    
+    if username in USERS:
+        del USERS[username]
+        save_users(USERS)
+        flash(f'User {username} deleted')
+    return redirect(url_for('manage_users'))
+
+@app.route('/change-password', methods=['POST'])
+@login_required
+def change_password():
+    current_password = request.form.get('current_password')
+    new_password = request.form.get('new_password')
+    confirm_password = request.form.get('confirm_password')
+    
+    username = session.get('username')
+    
+    if not check_password_hash(USERS[username], current_password):
+        flash('Current password is incorrect')
+        return redirect(url_for('manage_users'))
+    
+    if new_password != confirm_password:
+        flash('New passwords do not match')
+        return redirect(url_for('manage_users'))
+    
+    if len(new_password) < 6:
+        flash('Password must be at least 6 characters')
+        return redirect(url_for('manage_users'))
+    
+    USERS[username] = generate_password_hash(new_password)
+    save_users(USERS)
+    flash('Password changed successfully')
+    return redirect(url_for('manage_users'))
 
 @app.route('/')
 @app.route('/<path:current_path>')

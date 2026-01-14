@@ -8,6 +8,12 @@ __pycache__/
 *.py[cod]
 *.$py.class
 
+# --- User credentials (keep out of version control) ---
+users.json
+users.db
+config/users.json
+config/users.db
+
 # --- Distribution / packaging ---
 build/
 dist/
