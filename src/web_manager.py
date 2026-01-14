@@ -1,8 +1,9 @@
 import os
 import platform
 import shutil
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory, send_file
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, send_file, session, flash
 from werkzeug.utils import secure_filename
+from werkzeug.security import check_password_hash, generate_password_hash
 from PIL import Image
 from io import BytesIO
 import pillow_heif
@@ -21,6 +22,21 @@ SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".bmp", ".heic"]
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = IMAGE_DIR
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB limit for multiple files
+app.secret_key = 'change-this-secret-key-for-production'  # IMPORTANT: Change this!
+
+# Simple user authentication (in production, use a database)
+USERS = {
+    'admin': generate_password_hash('admin123'),  # Default credentials
+    # Add more users as needed: 'username': generate_password_hash('password')
+}
+
+def login_required(f):
+    def decorated_function(*args, **kwargs):
+        if 'username' not in session:
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    decorated_function.__name__ = f.__name__
+    return decorated_function
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in [ext[1:] for ext in SUPPORTED_EXTENSIONS]
@@ -50,8 +66,26 @@ def collect_images(directory, base_path=""):
                 images.append({'path': rel_path, 'date': date_str})
     return images
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        if username in USERS and check_password_hash(USERS[username], password):
+            session['username'] = username
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('index'))
+        flash('Invalid username or password')
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    return redirect(url_for('login'))
+
 @app.route('/')
 @app.route('/<path:current_path>')
+@login_required
 def index(current_path=''):
     view = request.args.get('view', 'folders')
     sort_by = request.args.get('sort', 'name')
@@ -102,6 +136,7 @@ def index(current_path=''):
     return render_template('index.html', items=items, current_path=current_path, sort_by=sort_by)
 
 @app.route('/upload', methods=['GET', 'POST'])
+@login_required
 def upload():
     if request.method == 'POST':
         files = request.files.getlist('files')
@@ -118,6 +153,7 @@ def upload():
     return render_template('upload.html')
 
 @app.route('/delete/<path:filepath>')
+@login_required
 def delete(filepath):
     full_path = os.path.join(IMAGE_DIR, filepath)
     if os.path.exists(full_path):
