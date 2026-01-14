@@ -108,7 +108,6 @@ def setup():
             return redirect(url_for('setup'))
         
         # Create the first admin user
-        global USERS
         USERS[username] = generate_password_hash(password)
         save_users(USERS)
         
