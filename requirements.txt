@@ -2,6 +2,7 @@ Pillow
 pillow-heif
 # pygame is installed via apt on Raspberry Pi for best compatibility; include here for virtualenvs
 pygame
+Flask
 
 # Build-time helpers (kept here for reproducible venvs; setup.sh also upgrades these)
 setuptools

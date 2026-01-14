@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Images</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        form { margin: 20px 0; }
+        input[type="file"] { margin: 10px 0; }
+        input[type="submit"] { padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .back-link { display: inline-block; margin-top: 20px; text-decoration: none; color: blue; }
+        .note { background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Upload Images or Folders</h1>
+    <div class="note">
+        <strong>Note:</strong> You can select multiple individual files or entire folders. 
+        When selecting folders, the directory structure will be preserved.
+    </div>
+    <form method="post" enctype="multipart/form-data">
+        <input type="file" name="files" multiple webkitdirectory required>
+        <br>
+        <input type="submit" value="Upload">
+    </form>
+    <a href="/" class="back-link">Back to Gallery</a>
+</body>
+</html>
