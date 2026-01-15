@@ -55,7 +55,7 @@ Paste entire below into file:
     ExecStart=/home/ENTER USERNAME HERE/Rpi-Photo-Frame/venv/bin/python src/Rpi-Photo-Frame.py
     
     Restart=always
-    RestartSec=5
+    RestartSec=15
     
     StandardOutput=journal
     StandardError=journal
@@ -85,7 +85,7 @@ Paste entire below into file:
     ExecStart=/home/ENTER USERNAME HERE/Rpi-Photo-Frame/venv/bin/python src/web_manager.py
     
     Restart=always
-    RestartSec=5
+    RestartSec=15
     
     StandardOutput=journal
     StandardError=journal
@@ -98,6 +98,14 @@ Paste entire below into file:
   sudo systemctl enable photo-frame-web.service
   sudo systemctl start photo-frame-web.service
 
+
+Install Ngrok:
+curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
+  | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null \
+  && echo "deb https://ngrok-agent.s3.amazonaws.com bookworm main" \
+  | sudo tee /etc/apt/sources.list.d/ngrok.list \
+  && sudo apt update \
+  && sudo apt install ngrok
 
 Setup Ngrok Autostart (requires ngrok auth token):
 sudo nano /etc/systemd/system/ngrok.service
@@ -115,7 +123,7 @@ Paste entire below into file:
     ExecStop=/bin/kill -s TERM $MAINPID
     
     Restart=always
-    RestartSec=10
+    RestartSec=15
     
     StandardOutput=journal
     StandardError=journal
@@ -130,6 +138,7 @@ Paste entire below into file:
 
   Note: Make sure ngrok is authenticated with your token first:
   ngrok config add-authtoken YOUR_TOKEN_HERE
+  (get your auth token by logging in at ngrock.com and going to the Linux installation page)
 
   To get your current ngrok URL: ./scripts/get_ngrok_url.sh
 
