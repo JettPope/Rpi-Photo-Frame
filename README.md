@@ -70,6 +70,70 @@ Paste entire below into file:
   (then, sudo reboot)
 
 
+Setup Web Server Autostart:
+sudo nano /etc/systemd/system/photo-frame-web.service
+Paste entire below into file:
+    [Unit]
+    Description=Photo Frame Web Manager
+    After=network.target
+    
+    [Service]
+    Type=simple
+    User=ENTER USERNAME HERE
+    
+    WorkingDirectory=/home/ENTER USERNAME HERE/Rpi-Photo-Frame
+    ExecStart=/home/ENTER USERNAME HERE/Rpi-Photo-Frame/venv/bin/python src/web_manager.py
+    
+    Restart=always
+    RestartSec=5
+    
+    StandardOutput=journal
+    StandardError=journal
+    
+    [Install]
+    WantedBy=multi-user.target
+
+  (outside that file, run:)
+  sudo systemctl daemon-reload
+  sudo systemctl enable photo-frame-web.service
+  sudo systemctl start photo-frame-web.service
+
+
+Setup Ngrok Autostart (requires ngrok auth token):
+sudo nano /etc/systemd/system/ngrok.service
+Paste entire below into file:
+    [Unit]
+    Description=Ngrok Tunnel for Photo Frame
+    After=network.target
+    Requires=photo-frame-web.service
+    
+    [Service]
+    Type=simple
+    User=ENTER USERNAME HERE
+    
+    ExecStart=/usr/local/bin/ngrok http 5000
+    ExecStop=/bin/kill -s TERM $MAINPID
+    
+    Restart=always
+    RestartSec=10
+    
+    StandardOutput=journal
+    StandardError=journal
+    
+    [Install]
+    WantedBy=multi-user.target
+
+  (outside that file, run:)
+  sudo systemctl daemon-reload
+  sudo systemctl enable ngrok.service
+  sudo systemctl start ngrok.service
+
+  Note: Make sure ngrok is authenticated with your token first:
+  ngrok config add-authtoken YOUR_TOKEN_HERE
+
+  To get your current ngrok URL: ./scripts/get_ngrok_url.sh
+
+
 
 SSH File Transfer from PC:
   Get IP address of rpi:

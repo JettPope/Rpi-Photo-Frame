@@ -25,4 +25,6 @@ if [ -f requirements.txt ]; then
   pip install -r requirements.txt
 fi
 
-echo "Setup complete. Activate the venv with: source venv/bin/activate"
+echo "Making scripts executable..."
+chmod +x scripts/setup.sh
+chmod +x scripts/get_ngrok_url.sh
