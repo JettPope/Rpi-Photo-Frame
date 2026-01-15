@@ -14,5 +14,5 @@ if [ -z "$public_url" ]; then
     exit 1
 fi
 
-echo "Your photo frame is accessible at: $public_url\n"
+echo "Your photo frame is accessible at: $public_url        \n"
 echo "Local access: http://localhost:5000"
