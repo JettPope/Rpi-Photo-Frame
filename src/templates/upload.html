@@ -11,19 +11,37 @@
         input[type="submit"] { padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
         .back-link { display: inline-block; margin-top: 20px; text-decoration: none; color: blue; }
         .note { background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .upload-section { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .upload-section h3 { margin-top: 0; color: #333; }
     </style>
 </head>
 <body>
-    <h1>Upload Images or Folders</h1>
-    <div class="note">
-        <strong>Note:</strong> You can select multiple individual files or entire folders. 
-        When selecting folders, the directory structure will be preserved.
+    <h1>Upload Images</h1>
+    
+    <div class="upload-section">
+        <h3>Upload Individual Files</h3>
+        <div class="note">
+            Select multiple image files from your device. Supported formats: JPG, PNG, HEIC, BMP
+        </div>
+        <form method="post" enctype="multipart/form-data">
+            <input type="file" name="files" multiple accept="image/*" required>
+            <br>
+            <input type="submit" value="Upload Files">
+        </form>
     </div>
-    <form method="post" enctype="multipart/form-data">
-        <input type="file" name="files" multiple webkitdirectory required>
-        <br>
-        <input type="submit" value="Upload">
-    </form>
+    
+    <div class="upload-section">
+        <h3>Upload Folders</h3>
+        <div class="note">
+            Select entire folders to preserve directory structure. All images in the folder and subfolders will be uploaded.
+        </div>
+        <form method="post" enctype="multipart/form-data">
+            <input type="file" name="files" multiple webkitdirectory required>
+            <br>
+            <input type="submit" value="Upload Folder">
+        </form>
+    </div>
+    
     <a href="/" class="back-link">Back to Gallery</a>
 </body>
 </html>
